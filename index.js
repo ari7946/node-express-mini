@@ -4,6 +4,7 @@ const server = express();
 server.use(express.json());
 
 server.get('/', (req, res) => {
+  console.log('req,res', req, res)
   res.send('Hello World');
 });
 
@@ -36,7 +37,6 @@ server.get('/api/users/:id', (req, res) => {
 });
 
 server.post('/api/users', (req, res) => {
-  console.log('req.body', req.body);
   const { name, bio } = req.body;
   if (!name || !bio) {
     return res.status(400).json({
@@ -62,44 +62,66 @@ server.delete('/api/users/:id', (req, res) => {
     .remove(id)
     .then(response => {
       console.log('delete response', response)
-      if (response !== id) {
+      if (response === 0) {
         return res.status(404).json(
           { message: "The user with the specified ID does not exist." }
         )
-      } else {
+      } else if (response === 1) {
         return res.status(200).json({
           success: "The user was removed from the database"
         })
       }
     })
     .catch(error => {
+      console.log('error', error)
       res.status(500).json({
-        error: "The user could not be removed"
+        error: error,
+        message: "The user could not be removed"
       })
     })
 })
 
-// ! needs work 
 server.put('/api/users/:id', (req, res) => {
-  const { bio, name } = req.params;
+  const { id } = req.params;
+  const { name, bio } = req.body;
   if (!name || !bio) {
-    return res.status(400).json({
-      errorMessage: "Please provide name and bio for the user."
-    }) 
+    res.status(200).json({
+      message: 'Both name and bio are needed'
+    })
+    return;
   }
-
   db
     .update(id, { name, bio })
     .then(response => {
-      res.status(200).json({
-        message: response
-      })
+      if (response == 0) {
+        res.status(400).json({
+          message: 'Unable to update'
+        })
+        return;
+      }
+      db
+        .findById(id)
+        .then(user => {
+          if (user.length === 0) {
+            res.status(200).json({
+              message: "successfully updated user"
+            })
+            return;
+          }
+          res.json(user);
+        })
+        .catch(error => {
+          res.status()
+        });
     })
-    .catch(err => {
-      return res.status(500).json({
-        error: "The user information could not be modified"
+    .catch(error => {
+      res.status(500).json({
+        error: error,
+        message: "something went terribly wrong and the world might end"
       })
-    })
-})
+      return;
+    });
+});
 
 server.listen(8000, () => console.log('API running...'));
+
